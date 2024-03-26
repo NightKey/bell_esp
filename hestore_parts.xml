@@ -1,0 +1,15 @@
+<?xml version= "1.0" encoding="UTF-8"?>
+<hestore>
+    <!--<item cid="100.259.21" quantity="1"><![CDATA[3,6 K 5%]]></item>-->
+    <item cid="100.259.76" quantity="1"><![CDATA[HT-225 D]]></item> <!--This is not needed for the build-->
+    <item cid="100.261.61" quantity="1"><![CDATA[ZL201-40G (WWS40G)]]></item>
+    <item cid="100.294.87" quantity="2"><![CDATA[43030-0007]]></item>
+    <item cid="100.303.93" quantity="2"><![CDATA[MX-5556-TL (NCT420-T16F)]]></item>
+    <item cid="100.356.41" quantity="1"><![CDATA[43025-0200]]></item>
+    <item cid="100.368.28" quantity="1"><![CDATA[MX-5557-02R]]></item>
+    <item cid="100.379.61" quantity="1"><![CDATA[NodeMCU-ESP-32S]]></item>
+    <item cid="100.390.68" quantity="1"><![CDATA[BME280-M]]></item>
+    <item cid="100.440.87" quantity="2"><![CDATA[AZ943-1CH-12DE]]></item>
+    <item cid="100.449.99" quantity="1"><![CDATA[HLK-20M05]]></item>
+    <item cid="100.450.01" quantity="1"><![CDATA[HLK-20M12]]></item>
+</hestore>
