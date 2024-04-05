@@ -51,7 +51,8 @@ class WebServer {
                 return;
             }
             debugln("Sending: " + command);
-            client.write(command.c_str() + 0x00);
+            client.write(command.c_str());
+            client.write((byte)0x00);
         }
 
         void commandRetrived(String command);

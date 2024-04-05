@@ -17,7 +17,9 @@ class SensorData {
         }
 
         String toString() {
-            return "{\"Temperature\":" + String(temperature) + ", \"HeatIndex\":" + String(heatIndex) + ",\"IsCelsius\":" + String(!isFahrenheit) + ",\"Humidity\":" + String(humidity) + ",\"Pressure\":" + String(pressure) + "}";
+            String tmpUnit = "°C";
+            if (isFahrenheit) tmpUnit = "°F";
+            return "{\"temperature\":\"" + String(temperature) + "\", \"heat_index\":\"" + String(heatIndex) + "\",\"temperature_unit\":\"" + tmpUnit + "\",\"humidity\":\"" + String(humidity) + "\",\"pressure\":\"" + String(pressure) + "\"}";
         }
 
     private:
