@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <Log.h>
+#include <math.h>
 
 
 class SensorData {
@@ -7,12 +9,15 @@ class SensorData {
         float temperature;
         float humidity;
         float heatIndex;
+        bool isFahrenheit;
 
         SensorData(float _pressure, float _temperature, float _humidity, bool _isFahrenheit) {
             pressure = _pressure;
-            temperature = _temperature;
+            cTemperature = _temperature;
+            fTemperature = convertToFahrenheit(_temperature);
             humidity = _humidity;
             isFahrenheit = _isFahrenheit;
+            temperature = isFahrenheit ? fTemperature : cTemperature;
             calculateHeatIndex();
         }
 
@@ -23,32 +28,36 @@ class SensorData {
         }
 
     private:
-        bool isFahrenheit;
+        float cTemperature;
+        float fTemperature;
+        float convertToFahrenheit(float temp) { 
+            return (9.0/5.0) * temp + 32;
+        }
+
+        float convertToCelsius(float temp) {
+            return (5.0/9.0) * (temp - 32);
+        }
+
         void calculateHeatIndex() {
-            float c1,c2,c3,c4,c5,c6,c7,c8,c9;
-            float tempSq = temperature*temperature;
+            float tempSq = fTemperature*fTemperature;
             float humSq = humidity*humidity;
-            if (isFahrenheit) {
-                c1 = -42.37;
-                c2 = 2.04901523;
-                c3 = 10.14333127;
-                c4 = -0.22475541;
-                c5 = -0.00683783;
-                c6 = -0.05481717;
-                c7 = 0.0012874;
-                c8 = 0.00085282;
-                c9 = -0.00000199;
-            } else {
-                c1 = -8.784694755556;
-                c2 = 1.61139411;
-                c3 = 2.33854883889;
-                c4 = -0.14611605;
-                c5 = -0.012308094;
-                c6 = -0.0164248277778;
-                c7 = 0,002211732;
-                c8 = 0.00072546;
-                c9 = -0.000003582;
+            float tmp = -42.379 + (2.04901523*fTemperature) + (10.14333127*humidity) - (0.22475541*fTemperature*humidity) - (0.00683783*tempSq) - (0.05481717*humSq) + (0.00122874*tempSq*humidity) + (0.00085282*fTemperature*humSq) - (0.00000199*tempSq*humSq);
+            debugln("tempSq: " + String(tempSq));
+            debugln("humSq: " + String(humSq));
+            debugln("TMP: " + String(tmp));
+
+            if (humidity < 13 && fTemperature >= 80 && fTemperature <= 110) {
+                tmp -= ((13 - humidity )/4)  * sqrt(17 - abs(fTemperature - 95.0) / 17);
+            } else if (humidity >85 && fTemperature > 80 && fTemperature < 87) {
+                tmp += ((humidity -85) / 10) * ((87 - fTemperature) / 5);
+            } else if (fTemperature < 80){
+                tmp = 0.5 * (fTemperature  + 61.0 + ((fTemperature - 68.0) * 1.2) + (humidity * 0.094));
             }
-            heatIndex = c1 +  c2*temperature + c3*humidity + c4*temperature*humidity + c5*tempSq + c6*humSq + c7*tempSq*humidity + c8*temperature*humSq + c9*tempSq*humSq;
+
+            debugln("Adjusted: " + String(tmp));
+            debugln("0 °C to °F -> " + String(convertToFahrenheit(0)));
+            debugln("0 °F to °C -> " + String(convertToCelsius(0)));
+
+            heatIndex = isFahrenheit ? tmp : convertToCelsius(tmp);
         }
 };

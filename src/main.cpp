@@ -1,3 +1,4 @@
+#include <Log.h>
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
@@ -6,19 +7,23 @@
 #include <Data.cpp>
 #include <Config.h>
 #include <WebServer.cpp>
-#include <Log.h>
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
 #define RINGSWITCH 13
 
+#if DEBUG >= 3
+SensorData simulation(1000000.0, -20.0, 50.0, false);
+#endif
+
 Adafruit_BME280 bme;
 bool status;
-WebServer server;
+WebServer server(WiFiSettings.port);
+int debounceTimer;
 
 bool useFahrenheit = false;
 
-void gatherValues();
+SensorData gatherValues();
 void bellRang();
 void toggleFahrenhei();
 
@@ -32,35 +37,50 @@ void setup() {
   }
   // Connecting to WIFI
   WiFi.mode(WIFI_STA);
-  debugln("Connecting to WIFI according to config...");
+  debug("Connecting to \"" + String(WiFiSettings.ssid) + "\" WIFI");
   WiFi.begin(WiFiSettings.ssid, WiFiSettings.password);
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+    delay(500);
+    debug(".");
     if (WiFi.status() == WL_CONNECT_FAILED) {
-      debugln("WiFi connection failed!");
+      debugln("\nWiFi connection failed!");
       while(1);
     }
   }
+  debugln("");
   // Creating webserver
-  server = WebServer(WiFiSettings.port);
+  server.begin();
+  debugln("IP Address: " + String(WiFi.localIP().toString()) + ":" + String(WiFiSettings.port));
   // Initializing pins
   pinMode(RINGSWITCH, INPUT);
-  attachInterrupt(RINGSWITCH, bellRang, FALLING);
+  #if DEBUG >= 1
+  gatherValues();
+  #endif
 }
 
 void loop() {
   server.loop();
+  if(!digitalRead(RINGSWITCH)) {
+    if (millis() - debounceTimer <= 100) {
+      debugln("Debounding....");
+      debounceTimer = millis();
+      return;
+    }
+    debounceTimer = millis();
+    bellRang();
+  }
 }
 
 void WebServer::commandRetrived(String target) {
   if (target == "toggleFahrenheit") toggleFahrenhei();
-  else if (target == "getSensors") gatherValues();
+  else if (target == "getSensors") send(gatherValues().toString());
   else {
     send("Not a valid command");
   }
 }
 
 void bellRang() {
+  debugln("BellRangCalled");
   server.send("Bell");
 }
 
@@ -69,16 +89,26 @@ void toggleFahrenhei() {
   server.send(String(useFahrenheit));
 }
 
-void gatherValues() {
-  float temp = bme.readTemperature();
-  if (useFahrenheit) {
-    temp = 1.8 * temp + 32;
+void logSensorData(SensorData data) {
+  String tempUnit = data.isFahrenheit ? " °F" : " °C";
+  debugln("Current Temp.: " + String(data.temperature) + tempUnit);
+  debugln("Current Hum.: " + String(data.humidity) + " %");
+  debugln("Current Pres.: " + String(data.pressure) + " pa");
+  debugln("Current Perceived Temp.: " + String(data.heatIndex) + tempUnit);
+}
+
+SensorData gatherValues() {
+  #if DEBUG >= 3
+  if (simulation.temperature++ >= 40) {
+    simulation.temperature = -20.0;
   }
-  debugln("Current Temp.: " + String(temp));
+  SensorData data = simulation;
+  #else
+  float temp = bme.readTemperature();
   float hum = bme.readHumidity();
-  debugln("Current Hum.: " + String(hum));
   float pres = bme.readPressure();
-  debugln("Current Pres.: " + String(pres));
   SensorData data = SensorData(pres, temp, hum, useFahrenheit);
-  server.send(data.toString());
+  #endif
+  logSensorData(data);
+  return data;
 }
