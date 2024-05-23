@@ -1,3 +1,4 @@
+#define DEBUG 2
 #include <Log.h>
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
@@ -33,10 +34,11 @@ void setup() {
   status = bme.begin(0x76);
   if (!status) {
     debugln("Couldn't find BME280!");
-    while(1);
+    while(DEBUG < 2);
   }
   // Connecting to WIFI
   WiFi.mode(WIFI_STA);
+  WiFi.config(WiFiSettings.local_IP, WiFiSettings.gateway, WiFiSettings.subnet);
   debug("Connecting to \"" + String(WiFiSettings.ssid) + "\" WIFI");
   WiFi.begin(WiFiSettings.ssid, WiFiSettings.password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -61,7 +63,7 @@ void setup() {
 void loop() {
   server.loop();
   if(!digitalRead(RINGSWITCH)) {
-    if (millis() - debounceTimer <= 100) {
+    if (millis() - debounceTimer <= 1000) {
       debugln("Debounding....");
       debounceTimer = millis();
       return;
@@ -98,16 +100,21 @@ void logSensorData(SensorData data) {
 }
 
 SensorData gatherValues() {
+  SensorData data = SensorData();
   #if DEBUG >= 3
   if (simulation.temperature++ >= 40) {
     simulation.temperature = -20.0;
   }
-  SensorData data = simulation;
+  data = simulation;
   #else
-  float temp = bme.readTemperature();
-  float hum = bme.readHumidity();
-  float pres = bme.readPressure();
-  SensorData data = SensorData(pres, temp, hum, useFahrenheit);
+  if (!status) {
+    data = SensorData(-99, -99, -99, false);
+  } else {
+    float temp = bme.readTemperature();
+    float hum = bme.readHumidity();
+    float pres = bme.readPressure();
+    data = SensorData(pres, temp, hum, useFahrenheit);
+  }
   #endif
   logSensorData(data);
   return data;

@@ -11,6 +11,10 @@ class SensorData {
         float heatIndex;
         bool isFahrenheit;
 
+        SensorData() {
+            SensorData(-99, -99, -99, 0);
+        }
+
         SensorData(float _pressure, float _temperature, float _humidity, bool _isFahrenheit) {
             pressure = _pressure;
             cTemperature = _temperature;
