@@ -1,4 +1,3 @@
-#define DEBUG 2
 #include <Log.h>
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
