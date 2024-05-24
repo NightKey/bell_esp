@@ -62,7 +62,7 @@ void setup() {
 void loop() {
   server.loop();
   if(!digitalRead(RINGSWITCH)) {
-    if (millis() - debounceTimer <= 1000) {
+    if (millis() - debounceTimer <= 5000) {
       debugln("Debounding....");
       debounceTimer = millis();
       return;
@@ -75,6 +75,9 @@ void loop() {
 void WebServer::commandRetrived(String target) {
   if (target == "toggleFahrenheit") toggleFahrenhei();
   else if (target == "getSensors") send(gatherValues().toString());
+  else if (target == "ping") {
+    send("pong");
+  }
   else {
     send("Not a valid command");
   }
