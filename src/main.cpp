@@ -25,17 +25,24 @@ bool useFahrenheit = false;
 
 SensorData gatherValues();
 void bellRang();
-void toggleFahrenhei();
+String toggleFahrenhei();
+Timer timer;
+Timer gatherTimer;
 
 void setup() {
   start(9600);
+  timer = Timer();
+  gatherTimer = Timer();
   // Initializing BME280
+  timer.startNewTimer("BME280 setup");
   status = bme.begin(0x76);
   if (!status) {
     debugln("Couldn't find BME280!");
     while(DEBUG < 2);
   }
+  timer.stopAndLog();
   // Connecting to WIFI
+  timer.startNewTimer("WiFi setup");
   WiFi.mode(WIFI_STA);
   WiFi.config(WiFiSettings.local_IP, WiFiSettings.gateway, WiFiSettings.subnet);
   debug("Connecting to \"" + String(WiFiSettings.ssid) + "\" WIFI");
@@ -48,10 +55,13 @@ void setup() {
       while(1);
     }
   }
+  timer.stopAndLog();
   debugln("");
   // Creating webserver
+  timer.startNewTimer("Server setup");
   server.begin();
   debugln("IP Address: " + String(WiFi.localIP().toString()) + ":" + String(WiFiSettings.port));
+  timer.stopAndLog();
   // Initializing pins
   pinMode(RINGSWITCH, INPUT);
   #if DEBUG >= 1
@@ -60,6 +70,7 @@ void setup() {
 }
 
 void loop() {
+  timer.startNewTimer("Main loop");
   server.loop();
   if(!digitalRead(RINGSWITCH)) {
     if (millis() - debounceTimer <= 5000) {
@@ -70,27 +81,28 @@ void loop() {
     debounceTimer = millis();
     bellRang();
   }
+  timer.stopAndLog();
 }
 
-void WebServer::commandRetrived(String target) {
-  if (target == "toggleFahrenheit") toggleFahrenhei();
-  else if (target == "getSensors") send(gatherValues().toString());
+void WebServer::commandRetrived(WiFiClient sender, String target) {
+  if (target == "toggleFahrenheit") send(sender, toggleFahrenhei());
+  else if (target == "getSensors") send(sender, gatherValues().toString());
   else if (target == "ping") {
-    send("pong");
+    send(sender, "pong");
   }
   else {
-    send("Not a valid command");
+    send(sender, "Not a valid command");
   }
 }
 
 void bellRang() {
   debugln("BellRangCalled");
-  server.send("Bell");
+  server.sendAll("Bell");
 }
 
-void toggleFahrenhei() {
+String toggleFahrenhei() {
   useFahrenheit = !useFahrenheit;
-  server.send(String(useFahrenheit));
+  return String(useFahrenheit);
 }
 
 void logSensorData(SensorData data) {
@@ -102,6 +114,7 @@ void logSensorData(SensorData data) {
 }
 
 SensorData gatherValues() {
+  gatherTimer.startNewTimer("Sensor data gathering");
   SensorData data = SensorData();
   #if DEBUG >= 3
   if (simulation.temperature++ >= 40) {
@@ -118,6 +131,9 @@ SensorData gatherValues() {
     data = SensorData(pres, temp, hum, useFahrenheit);
   }
   #endif
+  #if DEBUG >= 2
   logSensorData(data);
+  #endif
+  gatherTimer.stopAndLog();
   return data;
 }

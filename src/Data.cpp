@@ -26,14 +26,18 @@ class SensorData {
         }
 
         String toString() {
+            timer.startNewTimer("ToString");
             String tmpUnit = "°C";
             if (isFahrenheit) tmpUnit = "°F";
-            return "{\"temperature\":\"" + String(temperature) + "\", \"heat_index\":\"" + String(heatIndex) + "\",\"temperature_unit\":\"" + tmpUnit + "\",\"humidity\":\"" + String(humidity) + "\",\"pressure\":\"" + String(pressure) + "\"}";
+            String data = "{\"temperature\":\"" + String(temperature) + "\", \"heat_index\":\"" + String(heatIndex) + "\",\"temperature_unit\":\"" + tmpUnit + "\",\"humidity\":\"" + String(humidity) + "\",\"pressure\":\"" + String(pressure) + "\"}";
+            timer.stopAndLog();
+            return data;
         }
 
     private:
         float cTemperature;
         float fTemperature;
+        Timer timer = Timer();
         float convertToFahrenheit(float temp) { 
             return (9.0/5.0) * temp + 32;
         }
@@ -43,6 +47,7 @@ class SensorData {
         }
 
         void calculateHeatIndex() {
+            timer.startNewTimer("HeatIndex calculation");
             float tempSq = fTemperature*fTemperature;
             float humSq = humidity*humidity;
             float tmp = -42.379 + (2.04901523*fTemperature) + (10.14333127*humidity) - (0.22475541*fTemperature*humidity) - (0.00683783*tempSq) - (0.05481717*humSq) + (0.00122874*tempSq*humidity) + (0.00085282*fTemperature*humSq) - (0.00000199*tempSq*humSq);
@@ -59,9 +64,8 @@ class SensorData {
             }
 
             debugln("Adjusted: " + String(tmp));
-            debugln("0 °C to °F -> " + String(convertToFahrenheit(0)));
-            debugln("0 °F to °C -> " + String(convertToCelsius(0)));
 
             heatIndex = isFahrenheit ? tmp : convertToCelsius(tmp);
+            timer.stopAndLog();
         }
 };

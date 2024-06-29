@@ -2,6 +2,7 @@
 #include <Log.h>
 #include <WiFi.h>
 #include <queue>
+#include <list>
 
 enum Status {
     CREATED,
@@ -23,50 +24,66 @@ inline const String ToString(Status v) {
 
 class WebServer {
     public:
-        WiFiClient client;
+        std::list<WiFiClient> clients;
         WiFiServer server;
         int timeout;
         Status status;
-        std::queue<String> commandQueue;
         WebServer(int port) {
             server = WiFiServer(port);
             status = Status::CREATED;
         }
 
         void loop() {
-            switch(status) {
+            switch (status)
+            {
                 case FAILED: break;
                 case READY:
-                    if (server.hasClient()) {
-                        debugln("Server has client");
-                        client = server.accept();
-                        if (client) {
-                            debugln("New connection from " + String(client.remoteIP().toString()) + ":" + String(client.remotePort()));
-                            status = Status::CONNECTED;
+                case CONNECTED:
+                    auto iterator = clients.begin();
+                    while (iterator != clients.end()) {
+                        auto client = iterator;
+                        iterator++;
+                        if (!handleClient(*client)) {
+                            debugln("Client disconnected!");
+                            (*client).stop();
+                            clients.erase(client);
+                            if (clients.size() == 0) {
+                                status = Status::READY;
+                            }
                         }
                     }
                     break;
-                case CONNECTED:
-                    handleClient();
-                    break;
-                default: break;
+            }
+            if (status != FAILED && server.hasClient()) {
+                debugln("Server has client");
+                WiFiClient newClient = server.accept();
+                if (newClient) {
+                    debugln("New connection from " + String(newClient.remoteIP().toString()) + ":" + String(newClient.remotePort()));
+                    clients.push_back(newClient);
+                    status = Status::CONNECTED;
+                }
             }
             if (!server) status = Status::FAILED;
             hearthbeat();
         }
 
-        bool send(String command, bool addToQueIfNotAvailable = true) {
-            if (status == Status::READY) {
-                if (addToQueIfNotAvailable) {
-                    debugln("Saving command: " + command);
-                    commandQueue.push(command);
-                }
-                return false;
-            }
+        bool send(WiFiClient client, String command) {
+            sendTimer.startNewTimer("Sending data");
             debugln("Sending: " + command);
             client.write(command.c_str());
             client.write((char)0x0);
+            sendTimer.stopAndLog();
             return true;
+        }
+
+        bool sendAll(String command) {
+            auto iterator = clients.begin();
+            bool returnValue = true;
+            while (iterator != clients.end()) {
+                returnValue &= send(*iterator, command);
+                iterator++;
+            }
+            return returnValue;
         }
 
         void begin() {
@@ -76,36 +93,28 @@ class WebServer {
             debugln("WebServer " + ToString(status));
         }
 
-        void commandRetrived(String command);
+        void commandRetrived(WiFiClient sender, String command);
     private:
+        Timer timer = Timer();
+        Timer sendTimer = Timer();
         int counter = 0;
         void hearthbeat() {
             if (status != Status::FAILED && (counter++ % 100000) == 0) {
                 debug(".");
             }
         }
-        
-        void sendQueue() {
-            do {
-                if (send(commandQueue.front(), false)) commandQueue.pop();
-            } while (!commandQueue.empty());
-        }
 
-        void handleClient() {
+        bool handleClient(WiFiClient client) {
+            timer.startNewTimer("Server handle client");
             if (!client.connected()) {
-                debugln("Client disconnected!");
-                status = Status::READY;
-                client.stop();
-                return;
+                return false;
             }
             if (client.available()) {
                 String command = client.readStringUntil(0x00);
                 debugln("Retrived: " + command);
-                commandRetrived(command);
-                if(!commandQueue.empty()) {
-                    debugln("Queue length: " + String(commandQueue.size()));
-                    sendQueue();
-                }
+                commandRetrived(client, command);
             }
+            timer.stopAndLog();
+            return true;
         }
 };

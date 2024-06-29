@@ -16,3 +16,8 @@
 #define debugln(x)
 #define start(x)
 #endif
+
+#ifndef FUCK_CPP
+#define FUCK_CPP
+#include <Log.cpp>
+#endif
