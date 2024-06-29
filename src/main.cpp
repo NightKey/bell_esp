@@ -1,3 +1,5 @@
+#define DEBUG 1
+
 #include <Log.h>
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
@@ -18,7 +20,7 @@ SensorData simulation(1000000.0, -20.0, 50.0, false);
 
 Adafruit_BME280 bme;
 bool status;
-WebServer server(WiFiSettings.port);
+WebServer server(WiFiSettings.port, WiFiSettings.maxClients);
 int debounceTimer;
 
 bool useFahrenheit = false;

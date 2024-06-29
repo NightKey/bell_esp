@@ -28,9 +28,11 @@ class WebServer {
         WiFiServer server;
         int timeout;
         Status status;
-        WebServer(int port) {
+        int maxClients;
+        WebServer(int port, int maxClientsConfig) {
             server = WiFiServer(port);
             status = Status::CREATED;
+            maxClients = maxClientsConfig;
         }
 
         void loop() {
@@ -54,10 +56,13 @@ class WebServer {
                     }
                     break;
             }
-            if (status != FAILED && server.hasClient()) {
+            if (status != Status::FAILED && server.hasClient()) {
                 debugln("Server has client");
                 WiFiClient newClient = server.accept();
-                if (newClient) {
+                if (clients.size() >= maxClients) {
+                    debugln("Client refused due to having max clients already!");
+                    newClient.stop();
+                } else if (newClient) {
                     debugln("New connection from " + String(newClient.remoteIP().toString()) + ":" + String(newClient.remotePort()));
                     clients.push_back(newClient);
                     status = Status::CONNECTED;
