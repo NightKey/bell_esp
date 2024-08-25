@@ -32,15 +32,15 @@ Timer gatherTimer;
 void setup() {
   start(9600);
   timer = Timer();
-  gatherTimer = Timer();
   // Initializing BME280
+  timer.startNewTimer("Total setup");
   timer.startNewTimer("BME280 setup");
   status = bme.begin(0x76);
   if (!status) {
     debugln("Couldn't find BME280!");
     while(DEBUG < 2);
   }
-  timer.stopAndLog();
+  timer.stopAndLog("BME280 setup");
   // Connecting to WIFI
   timer.startNewTimer("WiFi setup");
   WiFi.mode(WIFI_STA);
@@ -55,15 +55,16 @@ void setup() {
       while(1);
     }
   }
-  timer.stopAndLog();
+  timer.stopAndLog("WiFi setup");
   debugln("");
   // Creating webserver
   timer.startNewTimer("Server setup");
   server.begin();
   debugln("IP Address: " + String(WiFi.localIP().toString()) + ":" + String(WiFiSettings.port));
-  timer.stopAndLog();
+  timer.stopAndLog("Server setup");
   // Initializing pins
   pinMode(RINGSWITCH, INPUT);
+  timer.stopAndLog("Total setup");
   #if DEBUG >= 1
   gatherValues();
   #endif
@@ -81,10 +82,11 @@ void loop() {
     debounceTimer = millis();
     bellRang();
   }
-  timer.stopAndLog();
+  timer.stopAndLog("Main loop");
 }
 
 void WebServer::commandRetrived(WiFiClient sender, String target) {
+  timer.startNewTimer("Retriving command");
   if (target == "toggleFahrenheit") send(sender, toggleFahrenhei());
   else if (target == "getSensors") send(sender, gatherValues().toString());
   else if (target == "ping") {
@@ -93,6 +95,7 @@ void WebServer::commandRetrived(WiFiClient sender, String target) {
   else {
     send(sender, "Not a valid command");
   }
+  timer.stopAndLog("Retriving command");
 }
 
 void bellRang() {
@@ -134,6 +137,6 @@ SensorData gatherValues() {
   #if DEBUG >= 2
   logSensorData(data);
   #endif
-  gatherTimer.stopAndLog();
+  gatherTimer.stopAndLog("Sensor data gathering");
   return data;
 }

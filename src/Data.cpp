@@ -30,7 +30,7 @@ class SensorData {
             String tmpUnit = "°C";
             if (isFahrenheit) tmpUnit = "°F";
             String data = "{\"temperature\":\"" + String(temperature) + "\", \"heat_index\":\"" + String(heatIndex) + "\",\"temperature_unit\":\"" + tmpUnit + "\",\"humidity\":\"" + String(humidity) + "\",\"pressure\":\"" + String(pressure) + "\"}";
-            timer.stopAndLog();
+            timer.stopAndLog("ToString");
             return data;
         }
 
@@ -66,6 +66,6 @@ class SensorData {
             debugln("Adjusted: " + String(tmp));
 
             heatIndex = isFahrenheit ? tmp : convertToCelsius(tmp);
-            timer.stopAndLog();
+            timer.stopAndLog("HeatIndex calculation");
         }
 };

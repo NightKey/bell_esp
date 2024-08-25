@@ -73,12 +73,12 @@ class WebServer {
         }
 
         bool send(WiFiClient client, String command) {
-            sendTimer.startNewTimer("Sending data");
+            timer.startNewTimer("Sending data");
             debugln("Sending: " + command);
             client.write(command.c_str());
             client.write((char)0x0);
-            sendTimer.stopAndLog();
             client.flush();
+            timer.stopAndLog("Sending data");
             return true;
         }
 
@@ -102,7 +102,6 @@ class WebServer {
         void commandRetrived(WiFiClient sender, String command);
     private:
         Timer timer = Timer();
-        Timer sendTimer = Timer();
         int counter = 0;
         void hearthbeat() {
             if (status != Status::FAILED && (counter++ % 100000) == 0) {
@@ -120,7 +119,7 @@ class WebServer {
                 debugln("Retrived: " + command);
                 commandRetrived(client, command);
             }
-            timer.stopAndLog();
+            timer.stopAndLog("Server handle client");
             return true;
         }
 };

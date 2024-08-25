@@ -1,42 +1,45 @@
 #include <Arduino.h>
+#include <map>
 
 class Timer {
     public:
-        #if DEBUG >=1
-        unsigned long startTime;
-        unsigned long duration;
-        String name;
-        #endif
         Timer(){}
-        void startNewTimer(String newName) {
+        void startNewTimer(String name) {
             #if DEBUG >= 1
-            name = newName;
-            startTime = millis();
-            duration = 0;
+            timers[name] = millis();
             #else
             return;
             #endif
         }
-        void stopAndLog() {
+        void stopAndLog(String name) {
             #if DEBUG >= 1
-            duration = millis() - startTime;
-            if (duration <= 2) return;
-            debugln(name + " took " + getDurationString());
+            auto _timer = timers.find(name);
+            if (_timer == timers.end()) {
+                debugln("'" + name + "' was not present in the 'timers' map:");
+                debugln("{");
+                for(const auto& element : timers) {
+                    debugln("\t'" + String(element.first) + "' : " + String(element.second) + ",");
+                }
+                debugln("}");
+                return;
+            }
+            unsigned long duration = millis() - _timer->second;
+            debugln(name + " took " + getDurationString(duration));
+            timers.erase(_timer);
             #else
             return;
             #endif
         }
     private:
-        String getDurationString() {
-            #if DEBUG >= 1
+        #if DEBUG >= 1
+        std::map<String, unsigned long> timers;
+        String getDurationString(unsigned long duration) {
             if(duration / 1000 > 0) {
                 float seconds = duration / 1000.0;
                 return String(seconds) + " s";
             } else {
                 return String(duration) + " ms";
             }
-            #else
-            return String("NaN");
-            #endif
         }
+        #endif
 };
