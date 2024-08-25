@@ -78,6 +78,7 @@ class WebServer {
             client.write(command.c_str());
             client.write((char)0x0);
             sendTimer.stopAndLog();
+            client.flush();
             return true;
         }
 
