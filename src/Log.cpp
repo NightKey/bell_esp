@@ -3,17 +3,15 @@
 
 class Timer {
     public:
-        Timer(){}
-        void startNewTimer(String name) {
+        Timer()= default;
+        void startNewTimer(const String& name) {
             #if DEBUG >= 1
             timers[name] = millis();
-            #else
-            return;
             #endif
         }
-        void stopAndLog(String name) {
+        void stopAndLog(const String& name) {
             #if DEBUG >= 1
-            auto _timer = timers.find(name);
+            const auto _timer = timers.find(name);
             if (_timer == timers.end()) {
                 debugln("'" + name + "' was not present in the 'timers' map:");
                 debugln("{");
@@ -24,22 +22,21 @@ class Timer {
                 return;
             }
             unsigned long duration = millis() - _timer->second;
-            debugln(name + " took " + getDurationString(duration));
+            #if DEBUG >= 2
+            debugln(name + " took " + getDurationString(duration))
+            #endif
             timers.erase(_timer);
-            #else
-            return;
             #endif
         }
     private:
         #if DEBUG >= 1
         std::map<String, unsigned long> timers;
-        String getDurationString(unsigned long duration) {
+        static String getDurationString(const unsigned long duration) {
             if(duration / 1000 > 0) {
-                float seconds = duration / 1000.0;
+                const float seconds = duration / 1000.0;
                 return String(seconds) + " s";
-            } else {
-                return String(duration) + " ms";
             }
+            return String(duration) + " ms";
         }
         #endif
 };
