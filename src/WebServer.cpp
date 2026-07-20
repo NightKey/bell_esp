@@ -10,7 +10,7 @@ enum Status {
     FAILED
 };
 
-inline String ToString(const Status v) {
+inline String toString(const Status v) {
     switch (v)
     {
         case READY: return "Ready";
@@ -103,7 +103,7 @@ class WebServer {
             server.begin();
             if (!server) status = Status::FAILED;
             else status = Status::READY;
-            debugln("WebServer " + ToString(status));
+            debugln("WebServer " + toString(status));
             return status == Status::READY;
         }
 

@@ -1,3 +1,5 @@
 .pio*
 .vscode*
 /src/Config.h
+.idea*
+.vs*

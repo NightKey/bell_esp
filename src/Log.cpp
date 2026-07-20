@@ -23,9 +23,10 @@ class Timer {
             }
             unsigned long duration = millis() - _timer->second;
             #if DEBUG >= 2
-            debugln(name + " took " + getDurationString(duration))
+            debugln(name + " took " + getDurationString(duration));
             #endif
             timers.erase(_timer);
+            yield();
             #endif
         }
     private:

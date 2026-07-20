@@ -3,6 +3,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <WiFi.h>
+#include <Adafruit_I2CDevice.h>
 
 #include <Data.cpp>
 #include <Config.h>
@@ -20,18 +21,33 @@ enum Health {
   WIFI,
   SERVER,
   BME280,
-  HEALTHY,
+  HEALTHY
 };
+
+static String toString(const Health v) {
+  switch (v)
+  {
+    case WIFI: return "WIFI";
+    case SERVER: return "SERVER";
+    case BME280: return "BME280";
+    case HEALTHY: return "HEALTHY";
+    default: return "UNKNOWN Status!";
+  }
+}
 
 static Adafruit_BME280 bme;
 static bool status;
 static WebServer server(WiFiSettings.port, WiFiSettings.maxClients);
 static unsigned long debounceTimer;
 static unsigned long blinkTimer;
+static unsigned long healthTimer;
 static bool blinkState;
 static int blinkStep = 0;
 static bool bellDetected = false;
 static Health health = Health::HEALTHY;
+static int BMEFailCount = 0;
+static constexpr int maxBMEFailCount = 5;
+static int blinkTime = 150;
 
 static bool useFahrenheit = false;
 
@@ -55,6 +71,7 @@ void setup() {
   if (!status) {
     debugln("Couldn't find BME280!");
     health = Health::BME280;
+    BMEFailCount = maxBMEFailCount;
   }
   timer.stopAndLog("BME280 setup");
   // Connecting to WIFI
@@ -102,7 +119,7 @@ static void WIFIBlink() {
       ++blinkStep;
       break;
     case 1:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = false;
         blinkTimer = millis();
         ++blinkStep;
@@ -127,20 +144,20 @@ static void ServerBlink() {
       ++blinkStep;
       break;
     case 1:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = false;
         blinkTimer = millis();
         ++blinkStep;
       }
       break;
     case 2:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = true;
         blinkTimer = millis();
         ++blinkStep;
       }
     case 3:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = false;
         blinkTimer = millis();
         ++blinkStep;
@@ -165,35 +182,35 @@ static void BMEBlink() {
       ++blinkStep;
       break;
     case 1:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = false;
         blinkTimer = millis();
         ++blinkStep;
       }
       break;
     case 2:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = true;
         blinkTimer = millis();
         ++blinkStep;
       }
       break;
     case 3:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = false;
         blinkTimer = millis();
         ++blinkStep;
       }
       break;
     case 4:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = true;
         blinkTimer = millis();
         ++blinkStep;
       }
       break;
     case 5:
-      if (millis() - blinkTimer >= 500) {
+      if (millis() - blinkTimer >= blinkTime) {
         blinkState = false;
         blinkTimer = millis();
         ++blinkStep;
@@ -211,6 +228,7 @@ static void BMEBlink() {
 }
 
 static void blinkLed() {
+  timer.startNewTimer("blinkLed");
   switch (health) {
     case WIFI:
       WIFIBlink();
@@ -242,6 +260,7 @@ static void blinkLed() {
       break;
   }
   digitalWrite(BUILTIN_LED, blinkState);
+  timer.stopAndLog("blinkLed");
 }
 
 void loop() {
@@ -257,13 +276,12 @@ void loop() {
       bellRang();
     }
   }
-  if (health != Health::HEALTHY) {
-    blinkLed(); // Do not do anything when not healthy
-    return;
-    timer.stopAndLog("Main loop");
-  }
   healthCheck();
   blinkLed();
+  if (health != Health::HEALTHY) {
+    timer.stopAndLog("Main loop");
+    return; // Do not do anything when not healthy
+  }
   if (server.loop()) {
     debugln("Web Server failed");
   }
@@ -271,22 +289,37 @@ void loop() {
 }
 
 static bool I2CHealth(const int address) {
+  timer.startNewTimer("I2C Health");
   Wire.beginTransmission(address);
   const byte error = Wire.endTransmission(true);
+  timer.stopAndLog("I2C Health");
   return error == 0;
 }
 
 void healthCheck() {
-  health = Health::HEALTHY;
-  if (WiFiClass::status() != WL_CONNECTED) {
-    health = Health::WIFI;
+  timer.startNewTimer("healthCheck");
+  const auto healthCheckDelay = (health == Health::BME280) ? 1000 : 1000;
+  if (millis() - healthTimer >= healthCheckDelay) {
+    health = Health::HEALTHY;
+    if (WiFiClass::status() != WL_CONNECTED) {
+      health = Health::WIFI;
+    }
+    if (!server.isHealthy()) {
+      health = Health::SERVER;
+    }
+    if (!I2CHealth(0x76) || isnanf(bme.readTemperature()) || isnanf(bme.readHumidity()) || isnanf(bme.readPressure())) {
+      if (BMEFailCount >= maxBMEFailCount) {
+        health = Health::BME280;
+      } else {
+        ++BMEFailCount;
+      }
+    } else {
+      BMEFailCount = 0;
+    }
+    healthTimer = millis();
+    debugln("Health: " + toString(health));
   }
-  if (!server.isHealthy()) {
-    health = Health::SERVER;
-  }
-  if (!I2CHealth(0x76) || bme.sensorID() != 0x60 || isnanf(bme.readTemperature()) || isnanf(bme.readHumidity()) || isnanf(bme.readPressure())) {
-    health = Health::BME280;
-  }
+  timer.stopAndLog("healthCheck");
 }
 
 void WebServer::commandRetrieved(WiFiClient &sender, const String &command) {
